@@ -1,5 +1,6 @@
 package bufmgr;
 
+import chainexception.ChainException;
 import global.PageId;
 import diskmgr.Page;
 
@@ -8,12 +9,12 @@ public class BufMgr {
 
 	}
 
-	public void pinPage(PageId pageno, Page page, boolean emptyPage) {
+	public void pinPage(PageId pageno, Page page, boolean emptyPage)throws ChainException {
 		// TODO Auto-generated method stub
 		
 	}
 
-	public void unpinPage(PageId pageno, boolean dirty) {
+	public void unpinPage(PageId pageno, boolean dirty)throws ChainException {
 		// TODO Auto-generated method stub
 		
 	}
@@ -23,7 +24,7 @@ public class BufMgr {
 		
 	}
 	
-	public void freePage(PageId globalPageId)
+	public void freePage(PageId globalPageId)throws ChainException
 	{
 		
 	}
@@ -31,5 +32,11 @@ public class BufMgr {
 	public void flushPage(PageId pageid){
 		
 	}
+
+	public int getNumUnpinnedBuffers() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
 
 }
