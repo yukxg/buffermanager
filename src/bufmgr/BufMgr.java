@@ -1,42 +1,47 @@
 package bufmgr;
 
+import java.util.Queue;
+
 import chainexception.ChainException;
 import global.PageId;
 import diskmgr.Page;
 
 public class BufMgr {
+	static Page []  bufPool;
+	static descriptors []bufDescr;
+	Queue<Page> queue ;
+	int numOfPage;
 	public BufMgr(int numbufs, String replacerArg) {
 
 	}
 
-	public void pinPage(PageId pageno, Page page, boolean emptyPage)throws ChainException {
+	public void pinPage(PageId pageno, Page page, boolean emptyPage)
+			throws ChainException {
 		// TODO Auto-generated method stub
-		
+
 	}
 
-	public void unpinPage(PageId pageno, boolean dirty)throws ChainException {
+	public void unpinPage(PageId pageno, boolean dirty) throws ChainException {
 		// TODO Auto-generated method stub
-		
+
 	}
-	
-	public PageId newPage(Page firstpage,int homany){
+
+	public PageId newPage(Page firstpage, int homany) {
 		return null;
-		
+
 	}
-	
-	public void freePage(PageId globalPageId)throws ChainException
-	{
-		
+
+	public void freePage(PageId globalPageId) throws ChainException {
+
 	}
-	
-	public void flushPage(PageId pageid){
-		
+
+	public void flushPage(PageId pageid) {
+
 	}
 
 	public int getNumUnpinnedBuffers() {
 		// TODO Auto-generated method stub
 		return 0;
 	}
-
 
 }
