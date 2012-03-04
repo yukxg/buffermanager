@@ -25,6 +25,11 @@ public class HashTable<k, v> {
 			a[i]=new LinkedList<Entry<k,v>>();
 		n=0;
 	}
+	
+	public boolean conatin(k Key)
+	{
+		return get(Key)==null? false:true;
+	}
 	public void put(k key,v value)
 	{
 		int i=hashValue(key);
