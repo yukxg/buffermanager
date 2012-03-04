@@ -31,6 +31,7 @@ public class DB implements GlobalConst {
     fp = new RandomAccessFile(fname, "rw");
     
     PageId pageId = new PageId();
+    
     Page apage = new Page();
     pageId.pid = 0;
     
