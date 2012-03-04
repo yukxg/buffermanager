@@ -1,4 +1,3 @@
-/* File DB.java */
 
 package diskmgr;
 

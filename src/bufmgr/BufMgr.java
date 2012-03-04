@@ -1,3 +1,5 @@
+package bufmgr;
+
 import global.PageId;
 import diskmgr.Page;
 
@@ -5,12 +7,14 @@ public class BufMgr {
 	public BufMgr(int numbufs, String replacerArg) {
 
 	}
-	
-	public void pinPage(PageId pin_pgid, Page page, boolean emptyPage){
+
+	public void pinPage(PageId pageno, Page page, boolean emptyPage) {
+		// TODO Auto-generated method stub
 		
 	}
-	
-	public void unpinPage(PageId PageId_in_a_DB , boolean dirty){
+
+	public void unpinPage(PageId pageno, boolean dirty) {
+		// TODO Auto-generated method stub
 		
 	}
 	
@@ -27,5 +31,5 @@ public class BufMgr {
 	public void flushPage(PageId pageid){
 		
 	}
-	
+
 }
