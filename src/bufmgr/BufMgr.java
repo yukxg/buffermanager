@@ -7,17 +7,22 @@ import java.util.Queue;
 import chainexception.ChainException;
 import global.PageId;
 import diskmgr.DB;
+import diskmgr.DiskMgrException;
 import diskmgr.FileIOException;
 import diskmgr.InvalidPageNumberException;
+import diskmgr.InvalidRunSizeException;
+import diskmgr.OutOfSpaceException;
 import diskmgr.Page;
 
 public class BufMgr {
 
 
-	static Page []  bufPool;
-	static descriptors []bufDescr;
-	Queue<PageId> queue ;
+	static Page[] bufPool;
+	static descriptors[] bufDescr;
+	Queue<PageId> queue;
 	int numOfPage;
+	static int top;
+	static int numbufs;
 	HashTable<PageId, Integer> hash;
 	DB db;
 
@@ -37,7 +42,31 @@ public class BufMgr {
 		}
 
 	}
-
+	
+	public int getFitstEmptyFrame()
+	{
+		int i=0;
+		if(top>=numbufs)
+			while(i<numbufs&&bufPool[i++]!=null);
+		else if(top<numbufs)
+			i=top;
+		return i;
+	}
+	
+	public boolean isFull()
+	{
+		return (numOfPage==numbufs )? true:false;
+	}
+	
+	private int getFrameNumber(PageId pId)
+	{
+		if(hash.conatin(pId))
+		{
+			return hash.get(pId);
+		}
+		return -1;
+	}
+	
 	public void pinPage(PageId pageno, Page page, boolean emptyPage) throws ChainException {
 		boolean found;
 		found = hash.conatin(pageno);
@@ -114,13 +143,31 @@ public class BufMgr {
 
 	}
 
-	public PageId newPage(Page firstpage, int homany) {
-		return null;
-
+	public PageId newPage(Page firstpage, int howmany) throws OutOfSpaceException, InvalidRunSizeException, InvalidPageNumberException, FileIOException, DiskMgrException, IOException {
+		int i=getFitstEmptyFrame();//here will return zero in case the pool is full and the pin id
+		bufPool[i]=firstpage;
+		PageId id=new PageId(i);
+		descriptors des=new descriptors(1, id, false);// here the pin count
+		bufDescr[i]=des;
+		hash.put(id, i);
+		db.allocate_page(id, howmany);
+		top++;
+		numOfPage++;
+		
+		return id;
 	}
-
 	
-	public void freePage(PageId globalPageId)throws ChainException{
+	public void freePage(PageId globalPageId)throws ChainException, IOException {
+	
+		if(hash.conatin(globalPageId))
+		{
+			int i=getFrameNumber(globalPageId);
+			if(bufDescr[i].isDirtyBit())
+				flushPage(globalPageId);
+			hash.remove(globalPageId);
+			bufPool[i]=null;
+			bufDescr[i]=null;
+		}
 		
 	}
 
