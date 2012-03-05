@@ -79,7 +79,7 @@ public class BufMgr {
 				bufDescr[index].setPin_count(bufDescr[index].getPin_count()+1);
 			}
 		}else{
-			if(numOfPage > bufPool.length){
+			if(isFull()){
 				if(queue.size() == 0){
 					// throw exception
 				}else{
@@ -113,10 +113,12 @@ public class BufMgr {
 				} catch (IOException e) {
 					
 				}
-				bufPool[numOfPage] = page;
-				bufDescr[numOfPage] = new descriptors(1,pageno, false);
-				hash.put(pageno, numOfPage);
+				int index = getFitstEmptyFrame();
+				bufPool[index] = page;
+				bufDescr[index] = new descriptors(1,pageno, false);
+				hash.put(pageno, index);
 				numOfPage++;
+				top++;
 			}
 		}
 		
