@@ -33,7 +33,7 @@ public class Page implements GlobalConst{
    * return the data byte array
    * @return 	the byte array of the page
    */
-  public byte [] getpage()
+  public byte[] getpage()
     {
       return data;
       
