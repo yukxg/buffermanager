@@ -39,18 +39,40 @@ public class BufMgr {
 		else {
 			// Other arrangement for policy
 		}
-
 	}
 
-	public int getFitstEmptyFrame() {
-		
-		int i = 0;
-		if (top >= numbufs)
-			while (i < numbufs && bufPool[i++] != null)
-				;
-		else if (top < numbufs)
-			i = top;
-		return i;
+	public int getFirstEmptyFrame() throws BufferPoolExceededException,
+			HashEntryNotFoundException, FreePageException {
+		if (isFull()) {
+			if (queue.size() == 0)
+				throw new BufferPoolExceededException(null,
+						"DB.java: getFirstEmptyFrame() failed");
+			else {
+				PageId id = queue.poll();
+				int frameNumber = 0;
+				try {
+					frameNumber = getFrameNumber(id);
+				} catch (Exception e) {
+					throw new HashEntryNotFoundException(null,
+							"DB.java: getFirstEmptyFrame() failed");
+				}
+				try {
+					freePage(id);
+				} catch (Exception e) {
+					throw new FreePageException(null,
+							"DB.java: getFirstEmptyFrame() failed");
+				}
+				return frameNumber;
+			}
+		} else {
+			int i = 0;
+			if (top >= numbufs)
+				while (i < numbufs && bufPool[i++] != null)
+					;
+			else if (top < numbufs)
+				i = top;
+			return i;
+		}
 	}
 
 	public boolean isFull() {
@@ -58,14 +80,16 @@ public class BufMgr {
 	}
 
 	private int getFrameNumber(PageId pId) throws HashEntryNotFoundException {
-			if (hash.conatin(pId)) 
-				return hash.get(pId);
-			else{
-			throw new HashEntryNotFoundException(null,"BUF_MNGR:HASH ENTRY NOT FOUND EXCEPTION");
-			}
+		if (hash.conatin(pId))
+			return hash.get(pId);
+		else {
+			throw new HashEntryNotFoundException(null,
+					"BUF_MNGR:HASH ENTRY NOT FOUND EXCEPTION");
+		}
 	}
 
-	public void pinPage(PageId pageno, Page page, boolean emptyPage) throws DiskMgrException, BufferPoolExceededException{
+	public void pinPage(PageId pageno, Page page, boolean emptyPage)
+			throws DiskMgrException, BufferPoolExceededException, HashEntryNotFoundException, FreePageException {
 		boolean found;
 		found = hash.conatin(pageno);
 		if (found) {
@@ -81,7 +105,8 @@ public class BufMgr {
 		} else {
 			if (isFull()) {
 				if (queue.size() == 0) {
-					throw new BufferPoolExceededException(null, "DB.java: pinPage() failed");
+					throw new BufferPoolExceededException(null,
+							"DB.java: pinPage() failed");
 				} else {
 					PageId id = queue.poll();
 					int index = hash.get(id);
@@ -90,7 +115,8 @@ public class BufMgr {
 						try {
 							db.write_page(pageno, bufPool[index]);
 						} catch (Exception e) {
-							throw new DiskMgrException(e, "DB.java: pinPage() failed");
+							throw new DiskMgrException(e,
+									"DB.java: pinPage() failed");
 						}
 					}
 					hash.remove(bufDescr[index].getPageNumber());
@@ -98,7 +124,8 @@ public class BufMgr {
 					try {
 						db.read_page(pageno, page);
 					} catch (Exception e) {
-						throw new DiskMgrException(e, "DB.java: pinPage() failed");
+						throw new DiskMgrException(e,
+								"DB.java: pinPage() failed");
 					}
 					// put this page at index
 					// construct its descriptors and put them at index
@@ -113,7 +140,7 @@ public class BufMgr {
 				} catch (Exception e) {
 					throw new DiskMgrException(e, "DB.java: pinPage() failed");
 				}
-				int index = getFitstEmptyFrame();
+				int index = getFirstEmptyFrame();
 				bufPool[index] = page;
 				bufDescr[index] = new descriptors(1, pageno, false);
 				hash.put(pageno, index);
@@ -124,11 +151,13 @@ public class BufMgr {
 
 	}
 
-	public void unpinPage(PageId pageno, boolean dirty) throws PagePinnedException, HashEntryNotFoundException  {
+	public void unpinPage(PageId pageno, boolean dirty)
+			throws PagePinnedException, HashEntryNotFoundException {
 		if (hash.conatin(pageno)) {
 			int index = hash.get(pageno);
 			if (bufDescr[index].getPin_count() == 0) {
-				throw new PagePinnedException(null, "DB.java: unpinPage() failed");
+				throw new PagePinnedException(null,
+						"DB.java: unpinPage() failed");
 			} else {
 				bufDescr[index].setDirtyBit(dirty);
 				bufDescr[index]
@@ -138,54 +167,61 @@ public class BufMgr {
 
 			}
 		} else {
-			throw new HashEntryNotFoundException(null, "DB.java: unpinPage() failed");
+			throw new HashEntryNotFoundException(null,
+					"DB.java: unpinPage() failed");
 		}
 
 	}
 
-	public PageId newPage(Page firstpage, int howmany) throws DiskMgrException{
-		int i = getFitstEmptyFrame();// here will return zero in case the pool
-										// is full and the pin id
+	public PageId newPage(Page firstpage, int howmany) throws DiskMgrException, BufferPoolExceededException, HashEntryNotFoundException, FreePageException {
+		int i = getFirstEmptyFrame();// here will return zero in case the pool
+										// // is full and the pin id
 		bufPool[i] = firstpage;
 		PageId id = new PageId();
-		descriptors des = new descriptors(1, id, false);// here the pin count
-		bufDescr[i] = des;
-		hash.put(id, i);
 		try {
 			db.allocate_page(id, howmany);
 		} catch (Exception e) {
 			throw new DiskMgrException(e, "DB.java: newPage() failed");
 		}
+		descriptors des = new descriptors(1, id, false);// here the pin count
+		bufDescr[i] = des;
+		hash.put(id, i);
 		top++;
 		numOfPage++;
 		return id;
 	}
 
-	public void freePage(PageId globalPageId) throws FreePageException    {
+	public void freePage(PageId globalPageId) throws FreePageException {
 
 		if (hash.conatin(globalPageId)) {
 			int i;
 			try {
 				i = getFrameNumber(globalPageId);
-			if (bufDescr[i].isDirtyBit())
-				try {
-					flushPage(globalPageId);
-				} catch (Exception e) {
-				throw new FreePageException(null,"BUFMGR: FAIL_PAGE_FREE");
+				if (bufDescr[i].getPin_count() > 0) {
+					throw new PagePinnedException(null,
+							"DB.java: freePage() failed");
 				}
-			hash.remove(globalPageId);
-			bufPool[i] = null;
-			bufDescr[i] = null;
+				if (bufDescr[i].isDirtyBit())
+					try {
+						flushPage(globalPageId);
+					} catch (Exception e) {
+						throw new FreePageException(null,
+								"BUFMGR: FAIL_PAGE_FREE");
+					}
+				hash.remove(globalPageId);
+				bufPool[i] = null;
+				bufDescr[i] = null;
 			} catch (Exception e) {
 				throw new FreePageException(null, "BUFMGR:FAIL_PAGE_FREE");
 			}
-		
-		}else
+
+		} else
 			throw new FreePageException(null, "BUFMGR:FAIL_PAGE_FREE");
 
 	}
 
-	public void flushPage(PageId pageid) throws HashEntryNotFoundException,DiskMgrException {
+	public void flushPage(PageId pageid) throws HashEntryNotFoundException,
+			DiskMgrException {
 		Page apage = null;
 		for (int i = 0; i < bufDescr.length; i++) {
 			if ((bufDescr[i].getPageNumber()).equals(pageid)) {
