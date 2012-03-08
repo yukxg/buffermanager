@@ -6,6 +6,7 @@ import java.util.Queue;
 
 import chainexception.ChainException;
 import global.PageId;
+import diskmgr.BufferPoolExceededException;
 import diskmgr.DB;
 import diskmgr.DiskMgrException;
 import diskmgr.FileIOException;
@@ -15,6 +16,7 @@ import diskmgr.InvalidPageNumberException;
 import diskmgr.InvalidRunSizeException;
 import diskmgr.OutOfSpaceException;
 import diskmgr.Page;
+import diskmgr.PagePinnedException;
 
 public class BufMgr {
 
@@ -41,6 +43,7 @@ public class BufMgr {
 	}
 
 	public int getFitstEmptyFrame() {
+		
 		int i = 0;
 		if (top >= numbufs)
 			while (i < numbufs && bufPool[i++] != null)
@@ -62,7 +65,7 @@ public class BufMgr {
 			}
 	}
 
-	public void pinPage(PageId pageno, Page page, boolean emptyPage) throws DiskMgrException{
+	public void pinPage(PageId pageno, Page page, boolean emptyPage) throws DiskMgrException, BufferPoolExceededException{
 		boolean found;
 		found = hash.conatin(pageno);
 		if (found) {
@@ -78,7 +81,7 @@ public class BufMgr {
 		} else {
 			if (isFull()) {
 				if (queue.size() == 0) {
-					// throw exception
+					throw new BufferPoolExceededException(null, "DB.java: pinPage() failed");
 				} else {
 					PageId id = queue.poll();
 					int index = hash.get(id);
@@ -121,11 +124,11 @@ public class BufMgr {
 
 	}
 
-	public void unpinPage(PageId pageno, boolean dirty) throws ChainException {
+	public void unpinPage(PageId pageno, boolean dirty) throws PagePinnedException, HashEntryNotFoundException  {
 		if (hash.conatin(pageno)) {
 			int index = hash.get(pageno);
 			if (bufDescr[index].getPin_count() == 0) {
-				// throw exception
+				throw new PagePinnedException(null, "DB.java: unpinPage() failed");
 			} else {
 				bufDescr[index].setDirtyBit(dirty);
 				bufDescr[index]
@@ -135,7 +138,7 @@ public class BufMgr {
 
 			}
 		} else {
-			// throw exception
+			throw new HashEntryNotFoundException(null, "DB.java: unpinPage() failed");
 		}
 
 	}
@@ -167,17 +170,18 @@ public class BufMgr {
 			if (bufDescr[i].isDirtyBit())
 				try {
 					flushPage(globalPageId);
-				} catch (DiskMgrException e) {
+				} catch (Exception e) {
 				throw new FreePageException(null,"BUFMGR: FAIL_PAGE_FREE");
 				}
 			hash.remove(globalPageId);
 			bufPool[i] = null;
 			bufDescr[i] = null;
-			} catch (HashEntryNotFoundException e) {
+			} catch (Exception e) {
 				throw new FreePageException(null, "BUFMGR:FAIL_PAGE_FREE");
 			}
 		
-		}
+		}else
+			throw new FreePageException(null, "BUFMGR:FAIL_PAGE_FREE");
 
 	}
 
