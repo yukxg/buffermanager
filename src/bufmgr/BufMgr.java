@@ -31,15 +31,18 @@ public class BufMgr {
 	private DB db;
 
 	public BufMgr(int numbufs, String replacerArg) {
+		this.numbufs=numbufs;
 		bufPool = new Page[numbufs];
 		bufDescr = new descriptors[numbufs];
 		numOfPage = 0;
 		db = new DB();
+		hash = new HashTable<PageId, Integer>();
 		if (replacerArg.charAt(0) == 'L')
 			queue = new LinkedList<PageId>();
 		else {
-			// Other arrangement for policy
+			queue= new LinkedList<PageId>();
 		}
+		System.out.println("number of buffers is: "+numbufs);
 	}
 
 	public int getFirstEmptyFrame() throws BufferPoolExceededException,
