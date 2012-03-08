@@ -50,8 +50,7 @@ class BMDriver extends TestDriver implements GlobalConst {
     String newlogpath;
     String remove_logcmd;
     String remove_dbcmd;
-    String remove_cmd = "/bin/rm -rf ";
-    
+    String remove_cmd = "cmd /c del <dbpath, logpath path>";
     newdbpath = dbpath;
     newlogpath = logpath;
     
