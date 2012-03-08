@@ -31,18 +31,22 @@ public class BufMgr {
 	private DB db;
 
 	public BufMgr(int numbufs, String replacerArg) {
-		this.numbufs=numbufs;
+		this.numbufs = numbufs;
 		bufPool = new Page[numbufs];
 		bufDescr = new descriptors[numbufs];
 		numOfPage = 0;
 		db = new DB();
+		try {
+			db.openDB("name", numbufs);
+		} catch (Exception e) {
+			// Do Nothing !
+		}
 		hash = new HashTable<PageId, Integer>();
 		if (replacerArg.charAt(0) == 'L')
 			queue = new LinkedList<PageId>();
 		else {
-			queue= new LinkedList<PageId>();
+			queue = new LinkedList<PageId>();
 		}
-		System.out.println("number of buffers is: "+numbufs);
 	}
 
 	public int getFirstEmptyFrame() throws BufferPoolExceededException,
@@ -140,6 +144,7 @@ public class BufMgr {
 			} else {
 				// I must read this page first
 				try {
+					// db.openDB("name");
 					db.read_page(pageno, page);
 				} catch (Exception e) {
 					throw new DiskMgrException(e, "DB.java: pinPage() failed");
@@ -252,6 +257,14 @@ public class BufMgr {
 						"BUF_MNGR: PAGE NOT FLUSHED ID EXCEPTION!");
 		} catch (Exception e) {
 			throw new DiskMgrException(e, "DB.java: flushPage() failed");
+		}
+	}
+
+	public void flushAllPages() throws HashEntryNotFoundException,
+			DiskMgrException {
+		for (int i = 0; i < numbufs; i++) {
+			if ((bufDescr[i] != null))
+				flushPage(bufDescr[i].getPageNumber());
 		}
 	}
 
