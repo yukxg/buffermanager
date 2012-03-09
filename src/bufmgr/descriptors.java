@@ -43,4 +43,8 @@ public class descriptors {
 	public boolean isDirtyBit() {
 		return dirtyBit;
 	}
+	public String toString()
+	{
+		return "pin_count "+getPin_count()+" id "+getPageNumber().pid+" dirty "+isDirtyBit();
+	}
 }

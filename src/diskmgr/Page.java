@@ -2,6 +2,8 @@
 
 package diskmgr;
 
+import java.util.Arrays;
+
 import global.*;
 
  /**
@@ -47,6 +49,10 @@ public class Page implements GlobalConst{
     {
       data = array;
     }
+  public String toString()
+  {
+	  return Arrays.toString(getpage());
+  }
   
   /**
    * private field: An array of bytes 
