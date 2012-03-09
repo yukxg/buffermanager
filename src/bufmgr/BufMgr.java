@@ -23,7 +23,7 @@ import diskmgr.PageUnpinnedException;
 public class BufMgr {
 	private Page[] bufPool;
 	private descriptors[] bufDescr;
-	private Queue<Integer> queue;
+	private Queue<PageId> queue;
 	private int numOfPage;
 	private int top;
 	private int numbufs;
@@ -43,9 +43,9 @@ public class BufMgr {
 		}
 		hash = new HashTable<Integer, Integer>();
 		if (replacerArg.charAt(0) == 'L')
-			queue = new LinkedList<Integer>();
+			queue = new LinkedList<PageId>();
 		else {
-			queue = new LinkedList<Integer>();
+			queue = new LinkedList<PageId>();
 		}
 	}
 
@@ -57,7 +57,7 @@ public class BufMgr {
 						"BUFMGR: NO_EMPTY_FRAME");
 			else {
 				PageId id = new PageId();
-				id.pid = queue.poll();
+				id = queue.poll();
 				int frameNumber = 0;
 				try {
 					frameNumber = getFrameNumber(id);
@@ -186,7 +186,7 @@ public class BufMgr {
 			PagePinnedException, InvalidPageNumberException, FileIOException,
 			IOException, HashEntryNotFoundException {
 		boolean found;
-
+		
 		found = hash.conatin(pageno.pid);
 		if (found) {
 			int index = hash.get(pageno.pid);
@@ -198,7 +198,7 @@ public class BufMgr {
 				page.setpage(bufPool[index].getpage());
 			}
 			if (bufDescr[index].getPin_count() == 0) {
-				queue.poll();
+				queue.remove(pageno);
 				bufDescr[index]
 						.setPin_count(bufDescr[index].getPin_count() + 1);
 			} else {
@@ -213,7 +213,7 @@ public class BufMgr {
 							"BUFMGR:PAGE_PIN_FAILED");
 				} else {
 					PageId id=new PageId();
-					id.pid=queue.poll();
+					id=queue.poll();
 					int index = hash.get(id.pid);
 					if (bufDescr[index].isDirtyBit()) {
 						// write this first
@@ -257,6 +257,7 @@ public class BufMgr {
 				db.write_page(pageno, page);
 				numOfPage++;
 			}
+			checkMehtod();
 		}
 //		System.out.println(hash);
 //		System.out.println(0 + " " + bufPool[getFrameNumber(new PageId(0))]);
@@ -264,6 +265,19 @@ public class BufMgr {
 //		System.out.println(2 + " " + bufPool[getFrameNumber(new PageId(2))]);
 //		System.out.println(3 + " " + bufPool[getFrameNumber(new PageId(3))]);
 	}
+		int counter=0;
+		public void checkMehtod()
+		{
+//			counter++;
+//			if(counter==4)
+//				System.out.println();
+//			for(int i=0;i<bufDescr.length;i++)
+//			{
+//				if(bufDescr[i]!=null&&bufDescr[i].getPin_count()==0&&queue.contains(bufDescr[i].getPageNumber())==false)
+//					System.out.println("Error here "+bufPool[i]+" "+i+" "+counter);
+//			}
+//			System.out.print(' ');
+		}
 
 	public void unpinPage(PageId pageno, boolean dirty)
 			throws PageUnpinnedException, HashEntryNotFoundException {
@@ -276,15 +290,25 @@ public class BufMgr {
 				bufDescr[index].setDirtyBit(dirty);
 				bufDescr[index]
 						.setPin_count(bufDescr[index].getPin_count() - 1);
-				if (bufDescr[index].getPin_count() == 0)
-					queue.add(pageno.pid);
+				if (!isInQueue(pageno)&&bufDescr[index].getPin_count() == 0)
+					queue.add(pageno);
 
 			}
 		} else {
 			throw new HashEntryNotFoundException(null,
 					"BUFMGR:PAGE_UNPIN_FAILED");
 		}
-
+		checkMehtod();
+	}
+	public boolean isInQueue(PageId id)
+	{
+		Iterator<PageId> myIterator= queue.iterator();
+		while(myIterator.hasNext())
+		{
+			if(myIterator.next().pid==id.pid)
+				return true;
+		}
+		return false;
 	}
 
 	public PageId newPage(Page firstpage, int howmany) throws DiskMgrException,
@@ -307,7 +331,7 @@ public class BufMgr {
 		hash.put(id.pid, i);
 		top++;
 		numOfPage++;
-
+		checkMehtod();
 		return id;
 	}
 
@@ -338,7 +362,7 @@ public class BufMgr {
 
 		} else
 			throw new FreePageException(null, "BUFMGR:FAIL_PAGE_FREE");
-
+		checkMehtod();
 	}
 
 	public void flushPage(PageId pageid) throws HashEntryNotFoundException,
