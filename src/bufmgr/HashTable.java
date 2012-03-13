@@ -14,7 +14,7 @@ public class HashTable<k, v> {
 	private LinkedList<Entry<k, v>> a[];
 
 	public HashTable() {
-		capacity = 1023;
+		capacity = 50;
 		Random r = new Random();
 		scale = r.nextInt(capacity - 1) + 1;
 		
@@ -30,6 +30,7 @@ public class HashTable<k, v> {
 	{
 		return get(Key)==null? false:true;
 	}
+
 	public void put(k key,v value)
 	{
 		int i=hashValue(key);
@@ -122,7 +123,7 @@ public class HashTable<k, v> {
 		for(int i=0;i<capacity;i++)
 			if(a[i]!=null&&!a[i].isEmpty())
 				count++;
-		System.out.println(count);
+		//System.out.println(count);
 		
 		return Arrays.toString(a);
 		

@@ -1,100 +1,80 @@
 package bufmgr;
 
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Queue;
 
-import chainexception.ChainException;
 import global.PageId;
-import diskmgr.BufferPoolExceededException;
-import diskmgr.DB;
+import global.SystemDefs;
 import diskmgr.DiskMgrException;
 import diskmgr.FileIOException;
 import diskmgr.FreePageException;
-import diskmgr.HashEntryNotFoundException;
 import diskmgr.InvalidPageNumberException;
 import diskmgr.InvalidRunSizeException;
-import diskmgr.OutOfSpaceException;
 import diskmgr.Page;
-import diskmgr.PagePinnedException;
 import diskmgr.PageUnpinnedException;
 
 public class BufMgr {
 	private Page[] bufPool;
 	private descriptors[] bufDescr;
-	private Queue<PageId> queue;
-	private int numOfPage;
-	private int top;
+	private Queue<Integer> queue;
 	private int numbufs;
 	private HashTable<Integer, Integer> hash;
-	private DB db;
 
+	/**
+	 * Create the BufMgr object.
+	 * 
+	 * @param numbufs
+	 *            number of buffers in the buffer pool.
+	 * @param replacerArg
+	 *            name of the buffer replacement policy.
+	 */
 	public BufMgr(int numbufs, String replacerArg) {
+		// Allocate pages (frames) for the buffer pool in main memory
 		this.numbufs = numbufs;
 		bufPool = new Page[numbufs];
 		bufDescr = new descriptors[numbufs];
-		numOfPage = 0;
-		db = new DB();
-		try {
-			db.openDB("name", numbufs);
-		} catch (Exception e) {
-			// Do Nothing !
-		}
 		hash = new HashTable<Integer, Integer>();
-		if (replacerArg.charAt(0) == 'L')
-			queue = new LinkedList<PageId>();
-		else {
-			queue = new LinkedList<PageId>();
-		}
-	}
-
-	public int getFirstEmptyFrame() throws BufferPoolExceededException,
-			HashEntryNotFoundException, FreePageException {
-		if (isFull()) {
-			if (queue.size() == 0)
-				throw new BufferPoolExceededException(null,
-						"BUFMGR: NO_EMPTY_FRAME");
-			else {
-				PageId id = new PageId();
-				id = queue.poll();
-				int frameNumber = 0;
-				try {
-					frameNumber = getFrameNumber(id);
-				} catch (Exception e) {
-					throw new HashEntryNotFoundException(null,
-							"BUFMGR: NO_EMPTY_FRAME");
-				}
-				try {
-					freePage(id);
-				} catch (Exception e) {
-					throw new FreePageException(null, "BUFMGR: NO_EMPTY_FRAME");
-				}
-				return frameNumber;
-			}
+		// make the buffer manage aware that the replacement policy is
+		// specified by replacerArg (i.e. Clock, LRU, MRU etc.)
+		if (replacerArg.charAt(0) == 'L') {
+			queue = new LinkedList<Integer>();
+			initializeQueue();
 		} else {
-			// int i = 0;
-			// if (top >= numbufs)
-			// while (i < numbufs && bufPool[i++] != null)
-			// ;
-			// else if (top < numbufs)
-			// i = top;
-			// return i;
-			int index = -1;
-			for (int i = 0; i < numbufs; i++) {
-				if (bufPool[i] == null) {
-					index = i;
-					break;
-				}
-			}
-			return index;
+			queue = new LinkedList<Integer>();
+			initializeQueue();
 		}
 	}
 
-	public boolean isFull() {
-		return (numOfPage == numbufs) ? true : false;
+	/*
+	 * Initializing the queue in beginning with all the length of the array
+	 */
+	public void initializeQueue() {
+		for (int i = 0; i < numbufs; i++)
+			queue.add(i);
 	}
 
+	/*
+	 * Return the first empty frame if the buffer is full throw an exception
+	 */
+	public int getFirstEmptyFrame() throws BufferPoolExceededException {
+		if (queue.size() == 0)
+			throw new BufferPoolExceededException(null, "BUFFER_POOL_EXCEED");
+		else
+			return queue.poll();
+	}
+
+	/*
+	 * Check whether the buffer is full or not !
+	 */
+	// TODO MODIFIED CHECK THIS
+	public boolean isFull() {
+		return (queue.size() == 0);
+	}
+
+	/*
+	 * Return the frame that contains the given page id
+	 */
 	private int getFrameNumber(PageId pId) throws HashEntryNotFoundException {
 		if (hash.conatin(pId.pid))
 			return hash.get(pId.pid);
@@ -104,247 +84,192 @@ public class BufMgr {
 		}
 	}
 
-	// public void pinPage(PageId pageno, Page page, boolean emptyPage)
-	// throws DiskMgrException, BufferPoolExceededException,
-	// PagePinnedException {
-	// boolean found;
-	// if(pageno.pid==2)
-	// {
-	// System.out.println();
-	// }
-	// found = hash.conatin(pageno.pid);
-	// if (found) {
-	// int index = hash.get(pageno.pid);
-	// if (bufDescr[index].getPin_count() == 0) {
-	// queue.remove(page);
-	// bufDescr[index]
-	// .setPin_count(bufDescr[index].getPin_count() + 1);
-	// bufPool[index]=page;
-	// } else {
-	// bufDescr[index]
-	// .setPin_count(bufDescr[index].getPin_count() + 1);
-	// bufPool[index]=page;
-	// }
-	// } else {
-	// if (isFull()) {
-	// if (queue.size() == 0) {
-	// throw new BufferPoolExceededException(null,
-	// "BUFMGR:PAGE_PIN_FAILED");
-	// } else {
-	// PageId id = queue.poll();
-	// int index = hash.get(id.pid);
-	// if (bufDescr[index].isDirtyBit()) {
-	// // write this first
-	// try {
-	// db.write_page(pageno, bufPool[index]);
-	// } catch (Exception e) {
-	// throw new DiskMgrException(e,
-	// "DB.java: pinPage() failed");
-	// }
-	// }
-	// hash.remove(bufDescr[index].getPageNumber().pid);
-	// // make DB read this page
-	// try {
-	// db.read_page(pageno, page);
-	// } catch (Exception e) {
-	// throw new DiskMgrException(e,
-	// "DB.java: pinPage() failed");
-	// }
-	// // put this page at index
-	// // construct its descriptors and put them at index
-	// bufPool[index] = page;
-	// bufDescr[index] = new descriptors(1, pageno, false);
-	// hash.put(pageno.pid, index);
-	// }
-	// } else {
-	// // I must read this page first
-	// try {
-	// // db.openDB("name");
-	// db.read_page(pageno, page);
-	// } catch (Exception e) {
-	// throw new DiskMgrException(e, "DB.java: pinPage() failed");
-	// }
-	// int index = -1;
-	// try {
-	// index = getFirstEmptyFrame();
-	// } catch (Exception e) {
-	// throw new PagePinnedException(null,
-	// "BUFMGR:PAGE_PIN_FAILED");
-	// }
-	// bufPool[index] = page;
-	// bufDescr[index] = new descriptors(1, pageno, false);
-	// hash.put(pageno.pid, index);
-	// numOfPage++;
-	// top++;
-	// }
-	// }
-	//
-	// }
-
-		public void pinPage(PageId pageno, Page page, boolean emptyPage)
+	/**
+	 * @param Page_Id_in_a_DB
+	 *            page number in the minibase.
+	 * @param page
+	 *            the pointer point to the page.
+	 * @param emptyPage
+	 *            true (empty page); false (non-empty page)
+	 */
+	public void pinPage(PageId pageno, Page page, boolean emptyPage)
 			throws DiskMgrException, BufferPoolExceededException,
 			PagePinnedException, InvalidPageNumberException, FileIOException,
 			IOException, HashEntryNotFoundException {
 		boolean found;
-		
+		// First check if this page is already in the buffer pool.
 		found = hash.conatin(pageno.pid);
 		if (found) {
 			int index = hash.get(pageno.pid);
+			// If the pin_count was 0 before the call, the page was a
+			// replacement candidate, but is no longer a candidate.
+			if (bufDescr[index].getPin_count() == 0)
+				queue.remove(index);
+			// If it is, increment the pin_count and return a pointer to this
+			// page.
+			bufDescr[index].setPin_count(bufDescr[index].getPin_count() + 1);
 			if (emptyPage == true) {
+				// allocating new page !
 				bufPool[index] = new Page(page.getpage().clone());
 				page.setpage(bufPool[index].getpage());
-				db.write_page(pageno, page);
 			} else {
 				page.setpage(bufPool[index].getpage());
 			}
-			if (bufDescr[index].getPin_count() == 0) {
-				queue.remove(pageno);
-				bufDescr[index]
-						.setPin_count(bufDescr[index].getPin_count() + 1);
-			} else {
-				bufDescr[index]
-						.setPin_count(bufDescr[index].getPin_count() + 1);
-			}
-
-		} else {
-			if (isFull()) {
-				if (queue.size() == 0) {
-					throw new BufferPoolExceededException(null,
-							"BUFMGR:PAGE_PIN_FAILED");
-				} else {
-					PageId id=new PageId();
-					id=queue.poll();
-					int index = hash.get(id.pid);
-					if (bufDescr[index].isDirtyBit()) {
-						// write this first
-						flushPage(id);
-					}
+		}
+		// If the page is not in the pool,
+		else {
+			int index = -1;
+			if (queue.size() != 0) {
+				// choose a frame (from the
+				// set of replacement candidates) to hold this page
+				index = queue.poll();
+				// Also, must write out the old page in chosen frame if it is
+				// dirty
+				// before reading new page.
+				if ((bufDescr[index] != null) && bufDescr[index].isDirtyBit()) {
+					flushPage(bufDescr[index].getPageNumber());
 					hash.remove(bufDescr[index].getPageNumber().pid);
-					// make DB read this page
-					try {
-						db.read_page(pageno, page);
-					} catch (Exception e) {
-						throw new DiskMgrException(e,
-								"DB.java: pinPage() failed");
-					}
-					// put this page at index
-					// construct its descriptors and put them at index
-					bufPool[index] = page;
-					bufDescr[index] = new descriptors(1, pageno, false);
-					hash.put(pageno.pid, index);
 				}
-			} else {
-				// I must read this page first
-				Page p = new Page();
-				try {
-					// db.openDB("name");
 
-					db.read_page(pageno, p);
-				} catch (Exception e) {
-					throw new DiskMgrException(e, "DB.java: pinPage() failed");
-				}
-				int index = -1;
-				try {
-					index = getFirstEmptyFrame();
-				} catch (Exception e) {
-					throw new PagePinnedException(null,
-							"BUFMGR:PAGE_PIN_FAILED");
-				}
-				bufPool[index] = p;
-				bufDescr[index] = new descriptors(1, pageno, false);
-				hash.put(pageno.pid, index);
-				page.setpage(bufPool[index].getpage());
-				db.write_page(pageno, page);
-				numOfPage++;
+			} else
+				throw new BufferPoolExceededException(null,
+						"BUFMGR:PAGE_PIN_FAILED");
+			Page temp = new Page();
+			try {
+				// read the
+				// page (using the appropriate method from {\em diskmgr}
+				// package)
+				SystemDefs.JavabaseDB.read_page(new PageId(pageno.pid), temp);
+			} catch (Exception e) {
+				throw new DiskMgrException(e, "DB.java: pinPage() failed");
 			}
-			checkMehtod();
+			// and pin it.
+			bufPool[index] = new Page();
+			bufPool[index].setpage((temp.getpage().clone()));
+			page.setpage(bufPool[index].getpage());
+			bufDescr[index] = new descriptors(1, new PageId(pageno.pid), false);
+			hash.put(pageno.pid, index);
 		}
-//		System.out.println(hash);
-//		System.out.println(0 + " " + bufPool[getFrameNumber(new PageId(0))]);
-//		System.out.println(1 + " " + bufPool[getFrameNumber(new PageId(1))]);
-//		System.out.println(2 + " " + bufPool[getFrameNumber(new PageId(2))]);
-//		System.out.println(3 + " " + bufPool[getFrameNumber(new PageId(3))]);
 	}
-		int counter=0;
-		public void checkMehtod()
-		{
-//			counter++;
-//			if(counter==4)
-//				System.out.println();
-//			for(int i=0;i<bufDescr.length;i++)
-//			{
-//				if(bufDescr[i]!=null&&bufDescr[i].getPin_count()==0&&queue.contains(bufDescr[i].getPageNumber())==false)
-//					System.out.println("Error here "+bufPool[i]+" "+i+" "+counter);
-//			}
-//			System.out.print(' ');
-		}
+
+	/**
+	 * Unpin a page specified by a pageId.
+	 * 
+	 * @param globalPageId_in_a_DB
+	 *            page number in the minibase.
+	 * @param dirty
+	 *            the dirty bit of the frame
+	 * @throws DiskMgrException
+	 */
 
 	public void unpinPage(PageId pageno, boolean dirty)
-			throws PageUnpinnedException, HashEntryNotFoundException {
+			throws PageUnpinnedException, HashEntryNotFoundException,
+			InvalidPageNumberException, FileIOException, IOException,
+			DiskMgrException {
+
 		if (hash.conatin(pageno.pid)) {
 			int index = hash.get(pageno.pid);
+			/*
+			 * If pin_count=0 before this call, throw an exception to report
+			 * error. (For testing purposes, we ask you to throw an exception
+			 * named PageUnpinnedException in case of error.)
+			 */
 			if (bufDescr[index].getPin_count() == 0) {
 				throw new PageUnpinnedException(null,
 						"BUFMGR:PAGE_UNPIN_FAILED");
 			} else {
+				// Set the dirty bit for this frame.
 				bufDescr[index].setDirtyBit(dirty);
+				// Further, if pin_count>0, this method should decrement it
 				bufDescr[index]
 						.setPin_count(bufDescr[index].getPin_count() - 1);
-				if (!isInQueue(pageno)&&bufDescr[index].getPin_count() == 0)
-					queue.add(pageno);
-
+				if (bufDescr[index].getPin_count() == 0) {
+					// TODO TRIED TO FLUSH IT THROWN AN EXCEPTION
+					// REDEBUG THIS !! :S:S I THINK NO NEED TO WRITE OR
+					// FLUSH AT THIS STAGE !
+					// SystemDefs.JavabaseDB.write_page(pageno, bufPool[index]);
+					// flushPage(pageno);
+					queue.add(index);
+				}
 			}
 		} else {
 			throw new HashEntryNotFoundException(null,
 					"BUFMGR:PAGE_UNPIN_FAILED");
 		}
-		checkMehtod();
-	}
-	public boolean isInQueue(PageId id)
-	{
-		Iterator<PageId> myIterator= queue.iterator();
-		while(myIterator.hasNext())
-		{
-			if(myIterator.next().pid==id.pid)
-				return true;
-		}
-		return false;
 	}
 
+	/**
+	 * Allocate new pages.
+	 * 
+	 * @param firstpage
+	 *            the address of the first page.
+	 * @param howmany
+	 *            total number of allocated new pages.
+	 * 
+	 * @return the first page id of the new pages. null, if error.
+	 */
+
 	public PageId newPage(Page firstpage, int howmany) throws DiskMgrException,
-			FreePageException {
-		int i = -1;
-		try {
-			i = getFirstEmptyFrame();
-		} catch (Exception e) {
-			throw new FreePageException(null, "BUFMGR:FAIL_NEW_PAGE.");
-		}
-		bufPool[i] = firstpage;
+			FreePageException, BufferPoolExceededException,
+			PagePinnedException, InvalidPageNumberException, FileIOException,
+			HashEntryNotFoundException, IOException, InvalidRunSizeException {
+		// TODO MSH FAHEM DY YA SALA7 :D :D ??!!
+		// TODO perform check on howmany !!
+		if (firstpage == null)
+			return null;
 		PageId id = new PageId();
 		try {
-			db.allocate_page(id, howmany);
+			// Call DB object to allocate a run of new pages
+			SystemDefs.JavabaseDB.allocate_page(id, howmany);
 		} catch (Exception e) {
 			throw new DiskMgrException(e, "DB.java: newPage() failed");
 		}
-		descriptors des = new descriptors(1, id, false);// here the pin count
-		bufDescr[i] = des;
-		hash.put(id.pid, i);
-		top++;
-		numOfPage++;
-		checkMehtod();
+		/*
+		 * If buffer is full, i.e., you can’t find a frame for the first page,
+		 * ask DB to deallocate all these pages, and return null.
+		 */
+		// TODO MODIFIED CHECK THIS and check for it place :S :S
+		if (isFull()) {
+			SystemDefs.JavabaseDB.deallocate_page(id);
+			return null;
+
+		} else
+			/*
+			 * find a frame in the buffer pool for the first page and pin it
+			 */
+			pinPage(id, firstpage, false);
 		return id;
+
 	}
 
-	public void freePage(PageId globalPageId) throws FreePageException {
+	/**
+	 * This method should be called to delete a page that is on disk. This
+	 * routine must call the method in diskmgr package to deallocate the page.
+	 * 
+	 * @param globalPageId
+	 *            the page number in the data base.
+	 */
 
+	public void freePage(PageId globalPageId) throws PagePinnedException,
+			InvalidRunSizeException, InvalidPageNumberException,
+			FileIOException, DiskMgrException, IOException {
+		// Check whether this is a valid page or not
 		if (hash.conatin(globalPageId.pid)) {
 			int i;
 			try {
+				// Getting the index of this page
 				i = getFrameNumber(globalPageId);
-				if (bufDescr[i].getPin_count() > 0) {
+				// If it has more than one pin on it
+				// throw an Exception
+				if (bufDescr[i].getPin_count() > 1) {
 					throw new PagePinnedException(null,
 							"DB.java: freePage() failed");
 				}
+				// If pin count !=0 unpin this page
+				if (bufDescr[i].getPin_count() != 0)
+					unpinPage(bufDescr[i].getPageNumber(),
+							bufDescr[i].isDirtyBit());
+				// If it is dirty flush it
 				if (bufDescr[i].isDirtyBit())
 					try {
 						flushPage(globalPageId);
@@ -352,33 +277,39 @@ public class BufMgr {
 						throw new FreePageException(null,
 								"BUFMGR: FAIL_PAGE_FREE");
 					}
+				// Remove it from the hash,bufferPool,bufferDescriptor
 				hash.remove(globalPageId.pid);
-				numOfPage--;
 				bufPool[i] = null;
 				bufDescr[i] = null;
+				SystemDefs.JavabaseDB.deallocate_page(new PageId(
+						globalPageId.pid));
 			} catch (Exception e) {
-				throw new FreePageException(null, "BUFMGR:FAIL_PAGE_FREE");
+				throw new PagePinnedException(null, "BUFMGR:FAIL_PAGE_FREE");
 			}
 
 		} else
-			throw new FreePageException(null, "BUFMGR:FAIL_PAGE_FREE");
-		checkMehtod();
+			SystemDefs.JavabaseDB.deallocate_page(new PageId(globalPageId.pid));
 	}
 
+	/**
+	 * Used to flush a particular page of the buffer pool to disk. This method
+	 * calls the write_page method of the diskmgr package.
+	 * 
+	 * @param pageid
+	 *            the page number in the database.
+	 */
 	public void flushPage(PageId pageid) throws HashEntryNotFoundException,
 			DiskMgrException {
 		Page apage = null;
-		for (int i = 0; i < bufDescr.length; i++) {
-			if (bufDescr[i] != null
-					&& bufDescr[i].getPageNumber().pid == (pageid.pid)) {
-				apage = bufPool[i];
-				break;
-			}
-		}
+		int i = getFrameNumber(pageid);
+		if (bufPool[i] != null)
+			apage = new Page(bufPool[i].getpage().clone());
+		;
 		try {
-			if (apage != null)
-				db.write_page(pageid, apage);
-			else
+			if (apage != null) {
+				SystemDefs.JavabaseDB.write_page(pageid, apage);
+				bufDescr[i].setDirtyBit(false);
+			} else
 				throw new HashEntryNotFoundException(null,
 						"BUF_MNGR: PAGE NOT FLUSHED ID EXCEPTION!");
 		} catch (Exception e) {
@@ -398,3 +329,5 @@ public class BufMgr {
 		return queue.size();
 	}
 }
+// TODO REMOVED THE NUMOFPAGE COUNTER NO NEED!!
+// TODO HANDLE POLICIES !!
