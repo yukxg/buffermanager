@@ -37,17 +37,19 @@ public class BufMgr {
 		directory = new HashTable<Integer, Integer>();
 		// make the buffer manage aware that the replacement policy is
 		// specified by replacerArg (i.e. Clock, LRU, MRU etc.)
+		//TODO handle policies
 		if (replacerArg.charAt(0) == 'L') {
-			queue = new LinkedList<Integer>();
-			initializeQueue();
+			//LRU POLICY
 		} else {
+			if (replacerArg.charAt(0) == 'C') {
 			queue = new LinkedList<Integer>();
 			initializeQueue();
+			}
 		}
 	}
 
 	/*
-	 * Initializing the queue in beginning with all the length of the array
+	 * Initializing the queue in beginning with all index of the array
 	 */
 	public void initializeQueue() {
 		for (int i = 0; i < numbufs; i++)
@@ -95,11 +97,12 @@ public class BufMgr {
 	public void pinPage(PageId pageno, Page page, boolean emptyPage)
 			throws DiskMgrException, BufferPoolExceededException,
 			PagePinnedException, InvalidPageNumberException, FileIOException,
-			IOException, HashEntryNotFoundException {
-		boolean found;
+			IOException, HashEntryNotFoundException 
+		{
 		// First check if this page is already in the buffer pool.
-		found = directory.conatin(pageno.pid);
-		if (found) {
+		boolean found = directory.conatin(pageno.pid);
+		if (found) 
+		{
 			int index = directory.get(pageno.pid);
 			// If the pin_count was 0 before the call, the page was a
 			// replacement candidate, but is no longer a candidate.
@@ -108,21 +111,27 @@ public class BufMgr {
 			// If it is, increment the pin_count and return a pointer to this
 			// page.
 			bufDescr[index].setPin_count(bufDescr[index].getPin_count() + 1);
-			if (emptyPage == true) {
+			//TODO CHECK THIS PART TOO !
+			//if (emptyPage) 
+			//{
 				// allocating new page !
-				bufPool[index] = new Page(page.getpage().clone());
+				//bufPool[index] = new Page(page.getpage().clone());
+				//page.setpage(bufPool[index].getpage());
+			//} 
+			//else 
+			//{
 				page.setpage(bufPool[index].getpage());
-			} else {
-				page.setpage(bufPool[index].getpage());
-			}
+			//}
 		}
 		// If the page is not in the pool,
-		else {
+		else 
+		{
 			int index = -1;
-			if (queue.size() != 0) {
+			if (queue.size() != 0) 
+			{
 				// choose a frame (from the
 				// set of replacement candidates) to hold this page
-				index = queue.poll();
+				index = getFirstEmptyFrame();
 				// Also, must write out the old page in chosen frame if it is
 				// dirty
 				// before reading new page.
