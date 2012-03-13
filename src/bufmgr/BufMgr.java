@@ -69,7 +69,6 @@ public class BufMgr {
 	/*
 	 * Check whether the buffer is full or not !
 	 */
-	// TODO MODIFIED CHECK THIS
 	public boolean isFull() {
 		return (queue.size() == 0);
 	}
@@ -152,8 +151,9 @@ public class BufMgr {
 				throw new DiskMgrException(e, "DB.java: pinPage() failed");
 			}
 			// and pin it.
-			bufPool[index] = new Page();
-			bufPool[index].setpage((temp.getpage().clone()));
+			//bufPool[index] = new Page();
+			//bufPool[index].setpage((temp.getpage().clone()));
+			bufPool[index]=temp;
 			page.setpage(bufPool[index].getpage());
 			bufDescr[index] = new descriptors(1, new PageId(pageno.pid), false);
 			directory.put(pageno.pid, index);
@@ -229,6 +229,9 @@ public class BufMgr {
 		//if (firstpage == null)
 		//	return null;
 		PageId id = new PageId();
+		if (isFull()) 
+			return null;
+ 
 		try {
 			// Call DB object to allocate a run of new pages
 			SystemDefs.JavabaseDB.allocate_page(id, howmany);
@@ -240,17 +243,10 @@ public class BufMgr {
 		 * ask DB to deallocate all these pages, and return null.
 		 */
 		// TODO MODIFIED CHECK THIS and check for it place :S :S
-		if (isFull()) 
-		{
-			SystemDefs.JavabaseDB.deallocate_page(id);
-			return null;
-
-		} 
-		else
-			/*
+				/*
 			 * find a frame in the buffer pool for the first page and pin it
 			 */
-			pinPage(id, firstpage, false);
+		pinPage(id, firstpage, false);
 		return id;
 
 	}
@@ -280,7 +276,7 @@ public class BufMgr {
 				}
 				// If pin count !=0 unpin this page
 				//Not sure from this condition :S :S 
-				if (bufDescr[i].getPin_count() != 0)
+				if (bufDescr[i].getPin_count() == 1)
 					unpinPage(bufDescr[i].getPageNumber(),
 							bufDescr[i].isDirtyBit());
 				// If it is dirty flush it
@@ -343,5 +339,3 @@ public class BufMgr {
 		return queue.size();
 	}
 }
-// TODO REMOVED THE NUMOFPAGE COUNTER NO NEED!!
-// TODO HANDLE POLICIES !!
