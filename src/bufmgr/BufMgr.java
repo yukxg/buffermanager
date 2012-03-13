@@ -133,21 +133,20 @@ public class BufMgr {
 				// set of replacement candidates) to hold this page
 				index = getFirstEmptyFrame();
 				// Also, must write out the old page in chosen frame if it is
-				// dirty
-				// before reading new page.
+				// dirty before reading new page.
 				if ((bufDescr[index] != null) && bufDescr[index].isDirtyBit()) {
 					flushPage(bufDescr[index].getPageNumber());
 					directory.remove(bufDescr[index].getPageNumber().pid);
 				}
 
-			} else
+			} 
+			else
 				throw new BufferPoolExceededException(null,
 						"BUFMGR:PAGE_PIN_FAILED");
 			Page temp = new Page();
 			try {
-				// read the
-				// page (using the appropriate method from {\em diskmgr}
-				// package)
+				// read the page(using the appropriate method from 
+				//{\em diskmgr} package)
 				SystemDefs.JavabaseDB.read_page(new PageId(pageno.pid), temp);
 			} catch (Exception e) {
 				throw new DiskMgrException(e, "DB.java: pinPage() failed");
@@ -176,7 +175,8 @@ public class BufMgr {
 			InvalidPageNumberException, FileIOException, IOException,
 			DiskMgrException {
 
-		if (directory.conatin(pageno.pid)) {
+		if (directory.conatin(pageno.pid))
+		{
 			int index = directory.get(pageno.pid);
 			/*
 			 * If pin_count=0 before this call, throw an exception to report
@@ -186,7 +186,9 @@ public class BufMgr {
 			if (bufDescr[index].getPin_count() == 0) {
 				throw new PageUnpinnedException(null,
 						"BUFMGR:PAGE_UNPIN_FAILED");
-			} else {
+			} 
+			else
+			{
 				// Set the dirty bit for this frame.
 				bufDescr[index].setDirtyBit(dirty);
 				// Further, if pin_count>0, this method should decrement it
@@ -201,10 +203,10 @@ public class BufMgr {
 					queue.add(index);
 				}
 			}
-		} else {
+		}
+		else 
 			throw new HashEntryNotFoundException(null,
 					"BUFMGR:PAGE_UNPIN_FAILED");
-		}
 	}
 
 	/**
@@ -224,8 +226,8 @@ public class BufMgr {
 			HashEntryNotFoundException, IOException, InvalidRunSizeException {
 		// TODO MSH FAHEM DY YA SALA7 :D :D ??!!
 		// TODO perform check on howmany !!
-		if (firstpage == null)
-			return null;
+		//if (firstpage == null)
+		//	return null;
 		PageId id = new PageId();
 		try {
 			// Call DB object to allocate a run of new pages
@@ -238,11 +240,13 @@ public class BufMgr {
 		 * ask DB to deallocate all these pages, and return null.
 		 */
 		// TODO MODIFIED CHECK THIS and check for it place :S :S
-		if (isFull()) {
+		if (isFull()) 
+		{
 			SystemDefs.JavabaseDB.deallocate_page(id);
 			return null;
 
-		} else
+		} 
+		else
 			/*
 			 * find a frame in the buffer pool for the first page and pin it
 			 */
@@ -275,6 +279,7 @@ public class BufMgr {
 							"DB.java: freePage() failed");
 				}
 				// If pin count !=0 unpin this page
+				//Not sure from this condition :S :S 
 				if (bufDescr[i].getPin_count() != 0)
 					unpinPage(bufDescr[i].getPageNumber(),
 							bufDescr[i].isDirtyBit());
@@ -287,7 +292,7 @@ public class BufMgr {
 								"BUFMGR: FAIL_PAGE_FREE");
 					}
 				// Remove it from the hash,bufferPool,bufferDescriptor
-					directory.remove(globalPageId.pid);
+				directory.remove(globalPageId.pid);
 				bufPool[i] = null;
 				bufDescr[i] = null;
 				SystemDefs.JavabaseDB.deallocate_page(new PageId(
