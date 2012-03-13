@@ -19,7 +19,7 @@ public class BufMgr {
 	private descriptors[] bufDescr;
 	private Queue<Integer> queue;
 	private int numbufs;
-	private HashTable<Integer, Integer> hash;
+	private HashTable<Integer, Integer> directory;
 
 	/**
 	 * Create the BufMgr object.
@@ -34,7 +34,7 @@ public class BufMgr {
 		this.numbufs = numbufs;
 		bufPool = new Page[numbufs];
 		bufDescr = new descriptors[numbufs];
-		hash = new HashTable<Integer, Integer>();
+		directory = new HashTable<Integer, Integer>();
 		// make the buffer manage aware that the replacement policy is
 		// specified by replacerArg (i.e. Clock, LRU, MRU etc.)
 		if (replacerArg.charAt(0) == 'L') {
@@ -76,8 +76,8 @@ public class BufMgr {
 	 * Return the frame that contains the given page id
 	 */
 	private int getFrameNumber(PageId pId) throws HashEntryNotFoundException {
-		if (hash.conatin(pId.pid))
-			return hash.get(pId.pid);
+		if (directory.conatin(pId.pid))
+			return directory.get(pId.pid);
 		else {
 			throw new HashEntryNotFoundException(null,
 					"BUF_MNGR:HASH_ENTRY_NOT_FOUND_EXCEPTION");
@@ -98,9 +98,9 @@ public class BufMgr {
 			IOException, HashEntryNotFoundException {
 		boolean found;
 		// First check if this page is already in the buffer pool.
-		found = hash.conatin(pageno.pid);
+		found = directory.conatin(pageno.pid);
 		if (found) {
-			int index = hash.get(pageno.pid);
+			int index = directory.get(pageno.pid);
 			// If the pin_count was 0 before the call, the page was a
 			// replacement candidate, but is no longer a candidate.
 			if (bufDescr[index].getPin_count() == 0)
@@ -128,7 +128,7 @@ public class BufMgr {
 				// before reading new page.
 				if ((bufDescr[index] != null) && bufDescr[index].isDirtyBit()) {
 					flushPage(bufDescr[index].getPageNumber());
-					hash.remove(bufDescr[index].getPageNumber().pid);
+					directory.remove(bufDescr[index].getPageNumber().pid);
 				}
 
 			} else
@@ -148,7 +148,7 @@ public class BufMgr {
 			bufPool[index].setpage((temp.getpage().clone()));
 			page.setpage(bufPool[index].getpage());
 			bufDescr[index] = new descriptors(1, new PageId(pageno.pid), false);
-			hash.put(pageno.pid, index);
+			directory.put(pageno.pid, index);
 		}
 	}
 
@@ -167,8 +167,8 @@ public class BufMgr {
 			InvalidPageNumberException, FileIOException, IOException,
 			DiskMgrException {
 
-		if (hash.conatin(pageno.pid)) {
-			int index = hash.get(pageno.pid);
+		if (directory.conatin(pageno.pid)) {
+			int index = directory.get(pageno.pid);
 			/*
 			 * If pin_count=0 before this call, throw an exception to report
 			 * error. (For testing purposes, we ask you to throw an exception
@@ -254,7 +254,7 @@ public class BufMgr {
 			InvalidRunSizeException, InvalidPageNumberException,
 			FileIOException, DiskMgrException, IOException {
 		// Check whether this is a valid page or not
-		if (hash.conatin(globalPageId.pid)) {
+		if (directory.conatin(globalPageId.pid)) {
 			int i;
 			try {
 				// Getting the index of this page
@@ -278,7 +278,7 @@ public class BufMgr {
 								"BUFMGR: FAIL_PAGE_FREE");
 					}
 				// Remove it from the hash,bufferPool,bufferDescriptor
-				hash.remove(globalPageId.pid);
+					directory.remove(globalPageId.pid);
 				bufPool[i] = null;
 				bufDescr[i] = null;
 				SystemDefs.JavabaseDB.deallocate_page(new PageId(
