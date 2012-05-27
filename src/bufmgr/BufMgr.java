@@ -110,17 +110,7 @@ public class BufMgr {
 			// If it is, increment the pin_count and return a pointer to this
 			// page.
 			bufDescr[index].setPin_count(bufDescr[index].getPin_count() + 1);
-			//TODO CHECK THIS PART TOO !
-			//if (emptyPage) 
-			//{
-				// allocating new page !
-				//bufPool[index] = new Page(page.getpage().clone());
-				//page.setpage(bufPool[index].getpage());
-			//} 
-			//else 
-			//{
-				page.setpage(bufPool[index].getpage());
-			//}
+			page.setpage(bufPool[index].getpage());
 		}
 		// If the page is not in the pool,
 		else 
@@ -194,12 +184,7 @@ public class BufMgr {
 				// Further, if pin_count>0, this method should decrement it
 				bufDescr[index]
 						.setPin_count(bufDescr[index].getPin_count() - 1);
-				if (bufDescr[index].getPin_count() == 0) {
-					// TODO TRIED TO FLUSH IT THROWN AN EXCEPTION
-					// REDEBUG THIS !! :S:S I THINK NO NEED TO WRITE OR
-					// FLUSH AT THIS STAGE !
-					// SystemDefs.JavabaseDB.write_page(pageno, bufPool[index]);
-					// flushPage(pageno);
+				if (bufDescr[index].getPin_count() == 0){
 					queue.add(index);
 				}
 			}
@@ -224,10 +209,6 @@ public class BufMgr {
 			FreePageException, BufferPoolExceededException,
 			PagePinnedException, InvalidPageNumberException, FileIOException,
 			HashEntryNotFoundException, IOException, InvalidRunSizeException {
-		// TODO MSH FAHEM DY YA SALA7 :D :D ??!!
-		// TODO perform check on howmany !!
-		//if (firstpage == null)
-		//	return null;
 		PageId id = new PageId();
 		if (isFull()) 
 			return null;
@@ -242,10 +223,9 @@ public class BufMgr {
 		 * If buffer is full, i.e., you can’t find a frame for the first page,
 		 * ask DB to deallocate all these pages, and return null.
 		 */
-		// TODO MODIFIED CHECK THIS and check for it place :S :S
-				/*
-			 * find a frame in the buffer pool for the first page and pin it
-			 */
+		/*
+		 * find a frame in the buffer pool for the first page and pin it
+		*/
 		pinPage(id, firstpage, false);
 		return id;
 
